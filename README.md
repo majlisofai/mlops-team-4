@@ -1,7 +1,7 @@
 # MLOps course workspace
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/majlisofai/mlops-course-template?quickstart=1)
-[![mlops-pipeline](https://github.com/majlisofai/mlops-course-template/actions/workflows/pipeline.yml/badge.svg)](https://github.com/majlisofai/mlops-course-template/actions/workflows/pipeline.yml)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/majlisofai/mlops-team-4?quickstart=1)
+[![mlops-pipeline](https://github.com/majlisofai/mlops-team-4/actions/workflows/pipeline.yml/badge.svg)](https://github.com/majlisofai/mlops-team-4/actions/workflows/pipeline.yml)
 
 An end-to-end MLOps pipeline, from source data to a served and monitored model, with **MLflow** tracking every stage.
 Everything runs on GitHub, in your browser: you install nothing on your laptop.

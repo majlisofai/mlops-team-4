@@ -2,8 +2,8 @@
 # Your team's settings. This is the first file you edit.
 # ---------------------------------------------------------------
 
-team: team-0          # team-1 ... team-5
-dataset: f1           # f1 (Grand Prix, target points_finish) or spl (Saudi league, target win)
+team: team-4
+dataset: spl           # f1 (Grand Prix, target points_finish) or spl (Saudi league, target win)
 
 # Model trained by the `train` stage.
 #   type: logistic_regression | random_forest | gradient_boosting
