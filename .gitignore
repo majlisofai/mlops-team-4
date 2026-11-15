@@ -1,0 +1,21 @@
+# Pipeline outputs
+work/
+reports/
+.mlflow/
+mlruns/
+mlartifacts/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.venv/
+
+# Editors / OS
+.DS_Store
+.idea/
+
+# Instructor roster (student GitHub logins)
+roster.csv

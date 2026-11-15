@@ -1,0 +1,57 @@
+# Synthetic Saudi league. Owned by the instructors: change team.yaml, not this file.
+# Column dictionary: https://github.com/majlisofai/mlops-training-dataset/tree/main/spl/data
+name: spl
+title: Synthetic Saudi league
+
+source:
+  repo: majlisofai/mlops-training-dataset
+  ref: aa7080d924c2f5f0159741e2e929a4fd2786d92a   # pinned commit = reproducible data
+  folder: spl/data
+  files:
+    history: matches.csv
+    provisional_2026: season_2026_provisional.csv
+    final_2026: season_2026_final.csv
+    corrections_2026: disciplinary_2026.csv
+    reference_window: scenarios/reference_window.json
+    drift_window: scenarios/heatwave_window.json
+    skew_window: scenarios/serving_skew_window.json
+
+keys: [match_id, club_code]
+target: win
+final_label: win_final
+
+split:
+  season_column: season
+  train_seasons: [2021, 2022, 2023, 2024]
+  holdout_seasons: [2025]
+
+features:
+  numeric: [home, league_position, opponent_position, form_points, squad_value_m, travel_km, kickoff_temp_c]
+  categorical: [kickoff_slot]
+
+# Known only after the final whistle. Never a model input.
+leakage: [goals_for, goals_against, result, points, shots_on_target, possession_pct, yellow_cards, red_cards]
+
+subgroups: [club_tier, promoted]
+
+baseline:
+  description: The side higher in the table wins
+  rule: league_position < opponent_position
+
+checks:
+  ranges:
+    home: [0, 1]
+    league_position: [1, 18]
+    opponent_position: [1, 18]
+    form_points: [0, 3]
+    squad_value_m: [0, 2000]
+    travel_km: [0, 2500]
+    kickoff_temp_c: [-5, 50]
+  categories:
+    kickoff_slot: [afternoon, evening, night]
+
+# Published in the dataset README; the tests check the pipeline reproduces them.
+facts:
+  history_rows: 3060
+  baseline_holdout_accuracy: 0.693
+  reference_model_holdout_accuracy: 0.748

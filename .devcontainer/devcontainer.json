@@ -1,0 +1,48 @@
+{
+  "name": "MLOps course",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "workspace",
+  "runServices": ["workspace", "mlflow"],
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "vscode",
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "8gb"
+  },
+  "forwardPorts": [5000, 5001],
+  "portsAttributes": {
+    "5000": {
+      "label": "MLflow UI",
+      "onAutoForward": "notify"
+    },
+    "5001": {
+      "label": "Model API",
+      "onAutoForward": "silent"
+    }
+  },
+  "postAttachCommand": "make welcome",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md", "team.yaml"]
+    },
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "charliermarsh.ruff",
+        "redhat.vscode-yaml",
+        "mechatroner.rainbow-csv",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests"],
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
+      }
+    }
+  }
+}

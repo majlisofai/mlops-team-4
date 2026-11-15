@@ -1,0 +1,56 @@
+# Synthetic Grand Prix championship. Owned by the instructors: change team.yaml, not this file.
+# Column dictionary: https://github.com/majlisofai/mlops-training-dataset/tree/main/f1/data
+name: f1
+title: Synthetic Grand Prix championship
+
+source:
+  repo: majlisofai/mlops-training-dataset
+  ref: aa7080d924c2f5f0159741e2e929a4fd2786d92a   # pinned commit = reproducible data
+  folder: f1/data
+  files:
+    history: races.csv
+    provisional_2026: season_2026_provisional.csv
+    final_2026: season_2026_final.csv
+    corrections_2026: stewards_2026.csv
+    reference_window: scenarios/reference_window.json
+    drift_window: scenarios/wet_race_window.json
+    skew_window: scenarios/serving_skew_window.json
+
+keys: [race_id, driver_code]
+target: points_finish
+final_label: points_finish_final
+
+split:
+  season_column: season
+  train_seasons: [2021, 2022, 2023, 2024]
+  holdout_seasons: [2025]
+
+features:
+  numeric: [grid, quali_gap_ms, driver_form, team_form, team_dnf_rate, rain_prob]
+  categorical: [circuit_type]
+
+# Known only after the race. Never a model input.
+leakage: [finish_position, points, status, laps_completed, fastest_lap, actual_rain]
+
+subgroups: [team_tier, rookie]
+
+baseline:
+  description: Start in the top ten, score points
+  rule: grid <= 10
+
+checks:
+  ranges:
+    grid: [1, 20]
+    quali_gap_ms: [0, 10000]
+    driver_form: [1, 20]
+    team_form: [0, 50]
+    team_dnf_rate: [0, 1]
+    rain_prob: [0, 1]
+  categories:
+    circuit_type: [street, permanent, high_speed]
+
+# Published in the dataset README; the tests check the pipeline reproduces them.
+facts:
+  history_rows: 2400
+  baseline_holdout_accuracy: 0.804
+  reference_model_holdout_accuracy: 0.835

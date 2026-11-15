@@ -1,0 +1,51 @@
+# Two containers, one image:
+#   mlflow     - tracking server + model registry + artifact store (UI on port 5000)
+#   workspace  - VS Code, the pipeline code and model serving (port 5001)
+# The workspace shares the mlflow network, so both ports are on localhost.
+# The same file runs in GitHub Codespaces and in GitHub Actions.
+
+services:
+  mlflow:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+      --allowed-hosts "*"
+      --cors-allowed-origins "*"
+      --workers 2
+    volumes:
+      - ../.mlflow:/mlflow
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    restart: unless-stopped
+
+  workspace:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    command: sleep infinity
+    working_dir: /workspace
+    volumes:
+      - ..:/workspace:cached
+    network_mode: service:mlflow
+    depends_on:
+      - mlflow
+    environment:
+      MLFLOW_TRACKING_URI: http://localhost:5000
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+      PYTHONPATH: /workspace
+      # Passed through from GitHub Actions; empty in Codespaces.
+      GITHUB_ACTIONS: ${GITHUB_ACTIONS:-}
+      GITHUB_SHA: ${GITHUB_SHA:-}
+      GITHUB_RUN_ID: ${GITHUB_RUN_ID:-}
+      MLOPS_DATASET: ${MLOPS_DATASET:-}

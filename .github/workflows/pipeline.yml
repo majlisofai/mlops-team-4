@@ -1,0 +1,69 @@
+# Runs the same containers as the Codespace: lint + tests, then the full MLflow pipeline.
+# Results: the job summary (metrics table) and the "mlflow-<dataset>" artifact (MLflow database, models, reports).
+name: mlops-pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: Dataset to run
+        type: choice
+        options: [team.yaml, f1, spl]
+        default: team.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE: docker compose -f .devcontainer/docker-compose.yml
+  MLOPS_DATASET: ${{ inputs.dataset != 'team.yaml' && inputs.dataset || '' }}
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build containers
+        run: $COMPOSE build
+
+      - name: Start MLflow
+        run: $COMPOSE up -d --wait mlflow
+
+      - name: Lint
+        run: $COMPOSE run --rm -T workspace make lint
+
+      - name: Test
+        run: $COMPOSE run --rm -T workspace make test
+
+      - name: Run pipeline (ingest -> validate -> prepare -> train -> evaluate -> register -> predict -> monitor)
+        run: $COMPOSE run --rm -T workspace make pipeline
+
+      - name: Job summary
+        if: always()
+        run: |
+          [ -f reports/summary.md ] && cat reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+          for f in reports/monitoring_*.md; do [ -f "$f" ] && cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
+          echo "dataset=$($COMPOSE run --rm -T workspace python -c 'from pipeline.config import load_config; print(load_config().dataset)')" >> "$GITHUB_ENV"
+
+      - name: Upload MLflow data and reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mlflow-${{ env.dataset }}-${{ github.run_number }}
+          path: |
+            .mlflow/
+            reports/
+          retention-days: 14
+
+      - name: Stop containers
+        if: always()
+        run: $COMPOSE down

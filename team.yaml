@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------
+# Your team's settings. This is the first file you edit.
+# ---------------------------------------------------------------
+
+team: team-0          # team-1 ... team-5
+dataset: f1           # f1 (Grand Prix, target points_finish) or spl (Saudi league, target win)
+
+# Model trained by the `train` stage.
+#   type: logistic_regression | random_forest | gradient_boosting
+#   params: passed straight to the scikit-learn estimator
+model:
+  type: logistic_regression
+  params:
+    C: 1.0
+    max_iter: 1000
+
+# A model is registered only when it passes this gate on the holdout season.
+quality_gate:
+  min_accuracy_lift_over_baseline: 0.0   # holdout accuracy - baseline-rule accuracy
+  min_roc_auc: 0.80
+
+# Monitoring thresholds: Population Stability Index, plus a Kolmogorov-Smirnov test for numeric features.
+monitoring:
+  psi_warning: 0.10
+  psi_alert: 0.25
+  ks_pvalue: 0.05     # a numeric alert also needs KS p-value below this
