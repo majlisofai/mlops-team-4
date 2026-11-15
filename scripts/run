@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Run a command in the workspace container, e.g.  ./scripts/run make pipeline
+# Inside the Codespace (already in the container) it runs the command directly.
+# On a GitHub Actions runner it executes it in the running compose stack as the runner's user,
+# so files it writes stay editable on the runner.
+set -euo pipefail
+
+if [ "${MLOPS_IN_CONTAINER:-}" = "1" ]; then
+  exec "$@"
+fi
+
+cd "$(dirname "$0")/.."
+exec docker compose -f .devcontainer/docker-compose.yml exec -T \
+  --user "$(id -u):$(id -g)" -e HOME=/tmp \
+  workspace "$@"

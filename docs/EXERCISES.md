@@ -1,6 +1,7 @@
 # Exercises
 
 Each exercise ends with something visible in MLflow or in CI. Work on a branch and open a pull request.
+In any exercise you can ask the agents in GitHub Actions: comment `@claude ...` on an issue or PR. Check what they claim against MLflow and the CI run, just as you would a teammate's work.
 
 ## 1. Run it and read it (stages 1-8)
 Run `make pipeline`. In the MLflow UI, find the parent run and its 8 child runs.
@@ -37,3 +38,8 @@ The 2026 results come in provisional; the corrections arrive hours (F1) or days 
 - Compare `season_2026_accuracy_provisional` with `season_2026_accuracy_final`.
 - Which predictions did the corrections flip? Use `corrections_2026` in `work/<dataset>/raw/`.
 - Should you retrain on 2026 data now? Write the argument as a pull request description.
+
+## 8. Work with the agents
+- Open an issue: `@claude try three models with experiment-tuning and open a PR with the best one`. Read the PR: are the numbers in the description the same as in the CI job summary?
+- Open a PR that quietly lowers `quality_gate.min_roc_auc`. Does the **mlops-reviewer** catch it?
+- Improve a skill in `.claude/skills/` (for example, add a troubleshooting row to `mlops-pipeline`) and show that the agent's answer gets better.

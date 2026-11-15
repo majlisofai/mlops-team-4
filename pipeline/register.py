@@ -31,7 +31,7 @@ def run(cfg: Config) -> dict:
             state["model_uri"],
             cfg.model_name,
             tags={
-                "holdout_accuracy": f"{accuracy:.4f}",
+                "holdout_accuracy": repr(accuracy),  # full precision: promotion compares against it
                 "data_sha256": state.get("data_sha256", ""),
                 "git_sha": git_sha(),
                 "team": cfg.team_name,

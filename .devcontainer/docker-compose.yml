@@ -44,6 +44,7 @@ services:
       MLFLOW_TRACKING_URI: http://localhost:5000
       MLFLOW_DISABLE_AGENT_HINT: "1"
       PYTHONPATH: /workspace
+      MLOPS_IN_CONTAINER: "1"
       # Passed through from GitHub Actions; empty in Codespaces.
       GITHUB_ACTIONS: ${GITHUB_ACTIONS:-}
       GITHUB_SHA: ${GITHUB_SHA:-}

@@ -1,5 +1,6 @@
 # Runs the same containers as the Codespace: lint + tests, then the full MLflow pipeline.
-# Results: the job summary (metrics table) and the "mlflow-<dataset>" artifact (MLflow database, models, reports).
+# Results: the job summary (metrics table, monitoring report, agent run report) and the
+# "mlflow-<dataset>" artifact (MLflow database, models, reports).
 name: mlops-pipeline
 
 on:
@@ -22,37 +23,52 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COMPOSE: docker compose -f .devcontainer/docker-compose.yml
   MLOPS_DATASET: ${{ inputs.dataset != 'team.yaml' && inputs.dataset || '' }}
 
 jobs:
   pipeline:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # The run report needs the org secret; without it the step is skipped.
+      AGENTS: ${{ secrets.ANTHROPIC_API_KEY != '' }}
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build containers
-        run: $COMPOSE build
-
-      - name: Start MLflow
-        run: $COMPOSE up -d --wait mlflow
+      - uses: ./.github/actions/start-stack
 
       - name: Lint
-        run: $COMPOSE run --rm -T workspace make lint
+        run: ./scripts/run make lint
 
       - name: Test
-        run: $COMPOSE run --rm -T workspace make test
+        run: ./scripts/run make test
 
       - name: Run pipeline (ingest -> validate -> prepare -> train -> evaluate -> register -> predict -> monitor)
-        run: $COMPOSE run --rm -T workspace make pipeline
+        run: ./scripts/run make pipeline
+
+      - name: Agent run report (mlflow-analyst)
+        if: env.AGENTS == 'true' && github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          npm install -g --silent @anthropic-ai/claude-code@2.1.319
+          claude -p "Write the run report for the pipeline run that just finished in this job. Output only the report in Markdown." \
+            --agent mlflow-analyst \
+            --model claude-sonnet-5-5 \
+            --max-budget-usd 1 \
+            --allowedTools "Bash(./scripts/run:*),Bash(cat:*),Bash(ls:*),Read,Glob,Grep" \
+            > "$RUNNER_TEMP/agent_report.md"
 
       - name: Job summary
         if: always()
         run: |
           [ -f reports/summary.md ] && cat reports/summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -s "$RUNNER_TEMP/agent_report.md" ]; then
+            { echo "## Agent run report (mlflow-analyst)"; echo; cat "$RUNNER_TEMP/agent_report.md"; echo; } >> "$GITHUB_STEP_SUMMARY"
+          fi
           for f in reports/monitoring_*.md; do [ -f "$f" ] && cat "$f" >> "$GITHUB_STEP_SUMMARY"; done
-          echo "dataset=$($COMPOSE run --rm -T workspace python -c 'from pipeline.config import load_config; print(load_config().dataset)')" >> "$GITHUB_ENV"
+          echo "dataset=$(./scripts/run python -c 'from pipeline.config import load_config; print(load_config().dataset)')" >> "$GITHUB_ENV"
 
       - name: Upload MLflow data and reports
         if: always()
@@ -66,4 +82,4 @@ jobs:
 
       - name: Stop containers
         if: always()
-        run: $COMPOSE down
+        run: docker compose -f .devcontainer/docker-compose.yml down

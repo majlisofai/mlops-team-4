@@ -1,0 +1,11 @@
+name: Start the MLOps containers
+description: Build the devcontainer image and start MLflow + the workspace, exactly as in a Codespace.
+runs:
+  using: composite
+  steps:
+    - name: Build containers
+      shell: bash
+      run: docker compose -f .devcontainer/docker-compose.yml build
+    - name: Start MLflow and the workspace
+      shell: bash
+      run: docker compose -f .devcontainer/docker-compose.yml up -d --wait mlflow workspace

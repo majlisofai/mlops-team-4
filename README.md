@@ -89,6 +89,20 @@ curl -s localhost:5001/invocations -H 'Content-Type: application/json' -d '{"dat
 
 The workflow for a change: create a branch, push it, open a pull request, check that CI is green and read the metrics in the job summary, then merge.
 
+## MLOps agents in GitHub Actions
+
+Claude runs in **GitHub Actions**, next to the same containers (MLflow and the workspace), so you need no AI tool or account in your Codespace.
+
+| How | What happens |
+|---|---|
+| Comment `@claude ...` on an issue or a pull request | Claude runs the pipeline, reads MLflow, and answers in the thread or opens a PR. Examples: `@claude compare logistic regression with gradient boosting and open a PR with the winner`, `@claude add a validation rule that catches travel_km in miles`, `@claude why did the quality gate fail on this PR?` |
+| Open a pull request | The **mlops-reviewer** agent reviews it for leakage, gate changes, reproducibility, train-serve consistency and missing tests, backed by a real pipeline run |
+| Push to `main` | The **mlflow-analyst** agent adds a run report (verdict, model, subgroups, monitoring, next step) to the job summary |
+
+The know-how lives in the repo, in [`.claude/skills/`](.claude/skills/): `mlops-pipeline`, `mlflow-explore`, `experiment-tuning`, `data-validation`, `model-serving` and `model-monitoring`. The agents are in [`.claude/agents/`](.claude/agents/), and the house rules in [`CLAUDE.md`](CLAUDE.md). Improving a skill is a pull request like any other.
+
+The MLflow server in an Actions job is fresh each time: the agent compares models by running them in the same job. It cannot see the MLflow in your Codespace.
+
 ## Good to know
 
 - **Push your work.** Your Codespace is temporary. When the course ends it is deleted, and anything not pushed to GitHub is lost.

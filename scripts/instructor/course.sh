@@ -5,9 +5,12 @@
 #   ./course.sh create-teams              one GitHub team per repo, with write access
 #   ./course.sh invite roster.csv         invite students into their team (org invitation by email)
 #   ./course.sh codespaces-on roster.csv  the org pays Codespaces for the students in the roster only
+#   ./course.sh agents-on                 org secret ANTHROPIC_API_KEY for the course repos (AI agents in Actions)
+#   ./course.sh agents-off                delete that secret: the agents stop working, nothing is billed
+#   ./course.sh sync <path>...            copy paths from the template's main branch into every team repo
 #   ./course.sh status                    codespaces, pending invitations, teams
 #   ./course.sh stop-codespaces           stop every running codespace in the org (work is kept)
-#   ./course.sh end-course                stop codespaces, org Codespaces off, teams read-only, repos archived
+#   ./course.sh end-course                stop codespaces, org Codespaces off, agents off, teams read-only, repos archived
 #   ./course.sh delete-codespaces         delete every org-billed codespace (unpushed work is lost)
 #   ./course.sh offboard roster.csv       remove students from the org (public repos stay readable/forkable)
 #
@@ -83,6 +86,58 @@ codespaces_on() {
   echo "    Students who had not accepted their invitation yet are skipped - run this again after they join."
 }
 
+course_repos() {
+  local list="$TEMPLATE"
+  for n in $(seq 1 "$TEAMS"); do list="$list,$PREFIX-$n"; done
+  echo "$list"
+}
+
+agents_on() {
+  # Use a dedicated key from an Anthropic Console workspace with a monthly spend limit.
+  read -r -s -p "Anthropic API key (input hidden): " key; echo
+  [ -n "$key" ] || { echo "aborted"; exit 1; }
+  printf '%s' "$key" | gh secret set ANTHROPIC_API_KEY --org "$ORG" --visibility selected --repos "$(course_repos)"
+  say "ANTHROPIC_API_KEY set for $(course_repos)"
+  echo "    Also install the Claude GitHub App on these repos: https://github.com/apps/claude"
+}
+
+agents_off() {
+  if gh secret delete ANTHROPIC_API_KEY --org "$ORG" >/dev/null 2>&1; then
+    say "ANTHROPIC_API_KEY deleted: the agents no longer run"
+  else
+    say "no ANTHROPIC_API_KEY org secret"
+  fi
+  echo "    Revoke the key in the Anthropic Console as well."
+}
+
+sync() {
+  # Overwrites the paths in the team repos: use it for instructor-owned files, or before students start.
+  [ $# -gt 0 ] || { echo "usage: $0 sync <path>... (e.g. .claude .github CLAUDE.md)" >&2; exit 1; }
+  src=$(mktemp -d)
+  gh repo clone "$ORG/$TEMPLATE" "$src" -- -q --depth 1
+  for n in $(seq 1 "$TEAMS"); do
+    repo="$PREFIX-$n"; tmp=$(mktemp -d)
+    gh repo clone "$ORG/$repo" "$tmp" -- -q
+    for path in "$@"; do
+      rm -rf "${tmp:?}/$path"
+      mkdir -p "$(dirname "$tmp/$path")"
+      cp -R "$src/$path" "$tmp/$path"
+    done
+    # Links in the README point at the team repo, not the template.
+    [ -f "$tmp/README.md" ] && sed -i.bak "s#$ORG/$TEMPLATE#$ORG/$repo#g" "$tmp/README.md" && rm -f "$tmp/README.md.bak"
+    git -C "$tmp" add -A
+    if git -C "$tmp" diff --cached --quiet; then
+      say "$repo: up to date"
+    else
+      git -C "$tmp" commit -qm "Sync from template: $*"
+      git -C "$tmp" push -q
+      say "$repo: synced $*"
+    fi
+    rm -rf "$tmp"
+  done
+  rm -rf "$src"
+}
+
 status() {
   say "codespaces in $ORG"
   gh api --paginate "orgs/$ORG/codespaces" \
@@ -111,6 +166,7 @@ end_course() {
   each_codespace stop
   gh api -X PUT "orgs/$ORG/codespaces/access" -f visibility=disabled >/dev/null
   say "org-paid Codespaces disabled"
+  agents_off
   for n in $(seq 1 "$TEAMS"); do
     gh api -X PUT "orgs/$ORG/teams/$PREFIX-$n/repos/$ORG/$PREFIX-$n" -f permission=pull >/dev/null
     gh repo archive "$ORG/$PREFIX-$n" --yes >/dev/null
@@ -144,10 +200,13 @@ case "$CMD" in
   create-teams) create_teams ;;
   invite) invite "$@" ;;
   codespaces-on) codespaces_on "$@" ;;
+  agents-on) agents_on ;;
+  agents-off) agents_off ;;
+  sync) sync "$@" ;;
   status) status ;;
   stop-codespaces) each_codespace stop ;;
   end-course) end_course ;;
   delete-codespaces) delete_codespaces ;;
   offboard) offboard "$@" ;;
-  *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+  *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
 esac
